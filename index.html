@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0A0B0A">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="MosbyFx">
+<meta name="mobile-web-app-capable" content="yes">
+<title>MosbyFx · Control de tarjetas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0A0B0A;
+    --panel:#121512;
+    --panel-2:#191E18;
+    --line:rgba(212,178,94,0.12);
+    --line-soft:rgba(255,255,255,0.06);
+    --text:#ECEFEA;
+    --text-dim:#8A8F86;
+    --text-faint:#5A5F57;
+    --green:#2FCB82;
+    --gold:#D4B25E;
+    --red:#E0594B;
+    --green-glow:rgba(47,203,130,0.35);
+    --gold-glow:rgba(212,178,94,0.40);
+    --red-glow:rgba(224,89,75,0.45);
+    --radius:16px;
+    --radius-sm:11px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  html,body{height:100%;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Space Grotesk',-apple-system,BlinkMacSystemFont,sans-serif;
+    line-height:1.45;
+    overflow-x:hidden;
+    padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  }
+  body::before{
+    content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(120% 70% at 50% -10%, rgba(47,203,130,0.10), transparent 60%),
+      radial-gradient(90% 50% at 90% 0%, rgba(212,178,94,0.05), transparent 55%);
+  }
+  .mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1;}
+  .wrap{position:relative;z-index:1;max-width:560px;margin:0 auto;padding:20px 18px 120px;}
+
+  /* ---------- header ---------- */
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:6px 2px 18px;}
+  .brand{display:flex;align-items:center;gap:10px;}
+  .brand .dot{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green-glow);}
+  .brand h1{font-size:16px;font-weight:700;letter-spacing:.22em;text-transform:uppercase;}
+  .brand h1 b{color:var(--gold);font-weight:700;}
+  .brand .sub{display:block;font-size:9.5px;letter-spacing:.28em;text-transform:uppercase;color:var(--text-faint);margin-top:2px;}
+  .clock{font-size:11px;letter-spacing:.06em;color:var(--text-dim);text-align:right;}
+
+  /* ---------- summary ---------- */
+  .summary{
+    background:linear-gradient(180deg, rgba(25,30,24,0.85), rgba(18,21,18,0.85));
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:22px 20px 20px;
+    box-shadow:0 1px 0 rgba(255,255,255,0.03) inset, 0 18px 50px -30px rgba(0,0,0,0.9);
+  }
+  .summary .eyebrow{font-size:10.5px;letter-spacing:.26em;text-transform:uppercase;color:var(--text-dim);}
+  .total{font-size:clamp(40px,12vw,56px);font-weight:600;letter-spacing:-.02em;line-height:1.0;margin:7px 0 2px;}
+  .total .cur{font-size:.4em;color:var(--text-dim);font-weight:500;vertical-align:.55em;margin-right:4px;letter-spacing:0;}
+  .meter{height:6px;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden;margin-top:16px;}
+  .meter > i{display:block;height:100%;border-radius:99px;width:0;transition:width .8s cubic-bezier(.2,.7,.2,1);background:var(--green);}
+  .meter.u-soon > i{background:var(--gold);}
+  .meter.u-hot > i{background:var(--red);}
+  .meter-cap{display:flex;justify-content:space-between;font-size:11px;color:var(--text-dim);margin-top:8px;}
+  .meter-cap .mono{color:var(--text);}
+
+  .next-strip{
+    display:flex;align-items:center;gap:11px;margin-top:18px;padding:12px 13px;
+    border:1px solid var(--line-soft);border-radius:var(--radius-sm);background:rgba(0,0,0,0.25);
+  }
+  .next-strip .pulse{width:9px;height:9px;border-radius:50%;flex:none;}
+  .next-strip .txt{flex:1;min-width:0;}
+  .next-strip .lab{font-size:9.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--text-faint);}
+  .next-strip .val{font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;}
+  .next-strip .amt{font-size:14px;font-weight:600;flex:none;}
+
+  /* ---------- month timeline ---------- */
+  .month{margin-top:26px;}
+  .month-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;padding:0 2px;}
+  .month-head h2{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--text-dim);font-weight:600;}
+  .month-head .mname{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);}
+  .track-box{position:relative;padding:26px 4px 4px;}
+  .track{position:relative;height:3px;border-radius:99px;background:rgba(255,255,255,0.08);}
+  .today-line{position:absolute;top:-9px;width:2px;height:15px;border-radius:2px;background:var(--text);transform:translateX(-50%);box-shadow:0 0 8px rgba(255,255,255,.4);}
+  .today-tag{position:absolute;top:-26px;transform:translateX(-50%);font-size:8.5px;letter-spacing:.14em;color:var(--text-dim);text-transform:uppercase;white-space:nowrap;}
+  .tick{position:absolute;top:50%;width:11px;height:11px;border-radius:50%;transform:translate(-50%,-50%);border:2px solid var(--bg);cursor:default;}
+  .tick.alt{transform:translate(-50%,-145%);}
+  .tick.ok{background:var(--green);box-shadow:0 0 8px var(--green-glow);}
+  .tick.soon{background:var(--gold);box-shadow:0 0 8px var(--gold-glow);}
+  .tick.hot{background:var(--red);box-shadow:0 0 8px var(--red-glow);}
+  .tick.paid{background:var(--text-faint);box-shadow:none;}
+  .month-empty{font-size:11.5px;color:var(--text-faint);text-align:center;padding:6px 0 2px;}
+
+  /* ---------- cards ---------- */
+  .sec-head{display:flex;align-items:center;justify-content:space-between;margin:30px 2px 14px;}
+  .sec-head h2{font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--text-dim);font-weight:600;}
+  .sec-head .count{font-size:11px;color:var(--text-faint);}
+
+  .cards{display:flex;flex-direction:column;gap:13px;}
+  .card{
+    position:relative;background:var(--panel);border:1px solid var(--line-soft);
+    border-radius:var(--radius);padding:17px 17px 16px;overflow:hidden;cursor:pointer;
+    transition:border-color .25s, transform .25s, background .25s;
+    animation:rise .5s cubic-bezier(.2,.7,.2,1) backwards;
+  }
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--accent,var(--gold));opacity:.85;}
+  .card:hover{border-color:var(--line);background:#141813;}
+  .card:active{transform:scale(.992);}
+  .card.is-paid{opacity:.62;}
+  .c-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+  .c-name{font-size:15.5px;font-weight:600;letter-spacing:.01em;}
+  .c-digits{font-size:11px;color:var(--text-faint);letter-spacing:.18em;margin-top:3px;}
+  .c-bal{text-align:right;}
+  .c-bal .n{font-size:21px;font-weight:600;letter-spacing:-.01em;}
+  .c-bal .l{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-faint);margin-top:1px;}
+  .c-id{display:flex;align-items:center;gap:12px;min-width:0;}
+  .c-mono{width:40px;height:40px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;box-shadow:0 4px 14px -6px rgba(0,0,0,.7);}
+  .c-todo{font-size:11.5px;color:var(--gold);margin-top:3px;}
+  .c-arrow{font-size:24px;color:var(--text-faint);font-weight:300;flex:none;align-self:center;line-height:1;}
+  .card.incomplete{border-style:dashed;border-color:var(--line);background:rgba(255,255,255,0.012);}
+  .card.incomplete:hover{border-color:var(--gold);}
+
+  .c-meter{height:4px;border-radius:99px;background:rgba(255,255,255,0.07);overflow:hidden;margin:14px 0 6px;}
+  .c-meter > i{display:block;height:100%;border-radius:99px;width:0;transition:width .7s cubic-bezier(.2,.7,.2,1);}
+  .c-util{display:flex;justify-content:space-between;font-size:10.5px;color:var(--text-dim);}
+
+  .c-foot{display:flex;align-items:center;gap:8px;margin-top:14px;}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:11px;padding:5px 9px;border-radius:99px;background:rgba(255,255,255,0.05);border:1px solid var(--line-soft);color:var(--text-dim);white-space:nowrap;}
+  .chip .k{color:var(--text-faint);font-size:9px;letter-spacing:.14em;text-transform:uppercase;}
+  .chip .led{width:7px;height:7px;border-radius:50%;}
+  .pay-chip{margin-left:auto;font-weight:600;color:var(--text);}
+  .pay-chip.ok{border-color:rgba(47,203,130,.3);}
+  .pay-chip.soon{border-color:rgba(212,178,94,.35);color:#F0D89A;}
+  .pay-chip.hot{border-color:rgba(224,89,75,.4);color:#F3A199;background:rgba(224,89,75,.08);}
+  .pay-chip.paid{color:var(--green);border-color:rgba(47,203,130,.3);}
+
+  .led.ok{background:var(--green);box-shadow:0 0 7px var(--green-glow);}
+  .led.soon{background:var(--gold);box-shadow:0 0 7px var(--gold-glow);}
+  .led.hot{background:var(--red);box-shadow:0 0 7px var(--red-glow);}
+  .led.paid{background:var(--green);}
+
+  /* ---------- empty ---------- */
+  .empty{text-align:center;padding:46px 24px;border:1px dashed var(--line);border-radius:var(--radius);background:rgba(255,255,255,0.015);}
+  .empty .ic{font-size:30px;opacity:.5;}
+  .empty h3{font-size:15px;font-weight:600;margin-top:12px;}
+  .empty p{font-size:13px;color:var(--text-dim);margin-top:6px;max-width:280px;margin-left:auto;margin-right:auto;}
+
+  /* ---------- add button ---------- */
+  .fab-wrap{position:fixed;left:0;right:0;bottom:0;z-index:30;padding:14px 18px calc(18px + env(safe-area-inset-bottom));
+    background:linear-gradient(180deg,transparent, var(--bg) 38%);pointer-events:none;}
+  .fab{pointer-events:auto;display:flex;align-items:center;justify-content:center;gap:9px;width:100%;max-width:524px;margin:0 auto;
+    height:52px;border:none;border-radius:14px;cursor:pointer;
+    font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.04em;color:#0A0B0A;
+    background:linear-gradient(180deg,#E7C977,var(--gold));box-shadow:0 10px 30px -10px var(--gold-glow);
+    transition:transform .15s, filter .2s;}
+  .fab:hover{filter:brightness(1.05);}
+  .fab:active{transform:translateY(1px) scale(.99);}
+  .fab .plus{font-size:19px;font-weight:400;line-height:1;}
+
+  /* ---------- modal ---------- */
+  .scrim{position:fixed;inset:0;z-index:50;background:rgba(0,0,0,.6);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);
+    display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s;}
+  .scrim.open{opacity:1;pointer-events:auto;}
+  .sheet{width:100%;max-width:560px;max-height:92vh;overflow-y:auto;background:var(--panel);border:1px solid var(--line);
+    border-bottom:none;border-radius:20px 20px 0 0;padding:8px 20px calc(24px + env(safe-area-inset-bottom));
+    transform:translateY(20px);transition:transform .3s cubic-bezier(.2,.8,.2,1);-webkit-overflow-scrolling:touch;}
+  .scrim.open .sheet{transform:translateY(0);}
+  .grip{width:38px;height:4px;border-radius:99px;background:var(--line);margin:8px auto 16px;}
+  .sheet h2{font-size:18px;font-weight:600;margin-bottom:2px;}
+  .sheet .hint{font-size:12px;color:var(--text-dim);margin-bottom:20px;}
+
+  .field{margin-bottom:15px;}
+  .field label{display:block;font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-dim);margin-bottom:7px;}
+  .input{width:100%;height:48px;background:var(--panel-2);border:1px solid var(--line-soft);border-radius:12px;
+    color:var(--text);font-family:inherit;font-size:15px;padding:0 14px;transition:border-color .2s,background .2s;}
+  .input.mono{font-family:'JetBrains Mono',monospace;}
+  .input::placeholder{color:var(--text-faint);}
+  .input:focus{outline:none;border-color:var(--gold);background:#1d231b;}
+  .row2{display:flex;gap:12px;}
+  .row2 .field{flex:1;}
+  .with-pre{position:relative;}
+  .with-pre .pre{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-faint);font-family:'JetBrains Mono',monospace;font-size:15px;pointer-events:none;}
+  .with-pre .input{padding-left:30px;}
+
+  .swatches{display:flex;gap:9px;flex-wrap:wrap;}
+  .sw{width:30px;height:30px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:transform .15s;}
+  .sw:active{transform:scale(.9);}
+  .sw.on{border-color:var(--text);box-shadow:0 0 0 2px var(--bg),0 0 0 3px currentColor;}
+
+  .err{font-size:11.5px;color:var(--red);margin-top:4px;display:none;}
+  .err.show{display:block;}
+
+  .sheet-actions{display:flex;gap:11px;margin-top:22px;}
+  .btn{flex:1;height:50px;border-radius:13px;font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.03em;cursor:pointer;border:1px solid var(--line-soft);background:var(--panel-2);color:var(--text);transition:filter .2s,transform .12s;}
+  .btn:active{transform:translateY(1px);}
+  .btn.primary{border:none;background:linear-gradient(180deg,#34D88A,var(--green));color:#062114;}
+  .btn.primary:hover{filter:brightness(1.06);}
+  .btn.ghost{flex:none;width:50px;font-size:18px;color:var(--text-dim);}
+
+  .danger-row{display:flex;align-items:center;gap:10px;margin-top:18px;padding-top:18px;border-top:1px solid var(--line-soft);}
+  .link-del{background:none;border:none;color:var(--red);font-family:inherit;font-size:12.5px;cursor:pointer;opacity:.8;padding:4px 0;letter-spacing:.02em;}
+  .link-del:hover{opacity:1;}
+  .confirm-del{display:none;align-items:center;gap:10px;width:100%;}
+  .confirm-del.show{display:flex;}
+  .confirm-del span{font-size:12.5px;color:var(--text-dim);flex:1;}
+  .mini{height:36px;padding:0 14px;border-radius:9px;font-family:inherit;font-size:12.5px;font-weight:600;cursor:pointer;border:1px solid var(--line-soft);background:var(--panel-2);color:var(--text);}
+  .mini.no{color:var(--text-dim);}
+  .mini.yes{background:rgba(224,89,75,.14);border-color:rgba(224,89,75,.4);color:#F3A199;}
+
+  .paid-toggle{width:100%;height:46px;border-radius:12px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;margin-top:6px;
+    border:1px solid rgba(47,203,130,.3);background:rgba(47,203,130,.08);color:var(--green);transition:filter .2s;}
+  .paid-toggle.undo{border-color:var(--line-soft);background:var(--panel-2);color:var(--text-dim);}
+
+  /* toast */
+  .toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(12px);z-index:60;
+    background:var(--panel-2);border:1px solid var(--line);border-radius:99px;padding:9px 16px;font-size:12.5px;color:var(--text);
+    opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;display:flex;align-items:center;gap:8px;}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  .toast .led{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 7px var(--green-glow);}
+
+  @keyframes rise{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition:none !important;}
+  }
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:4px;}
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="topbar">
+      <div class="brand">
+        <span class="dot"></span>
+        <div>
+          <h1>MOSBY<b>FX</b></h1>
+          <span class="sub">Control de tarjetas</span>
+        </div>
+      </div>
+      <div class="clock mono" id="clock">—</div>
+    </header>
+
+    <section class="summary">
+      <div class="eyebrow">Deuda total</div>
+      <div class="total mono"><span class="cur">$</span><span id="totalNum">0</span></div>
+      <div class="meter" id="globalMeter"><i></i></div>
+      <div class="meter-cap">
+        <span><span class="mono" id="utilPct">0%</span> de tu crédito usado</span>
+        <span><span class="mono" id="availNum">$0</span> disponible</span>
+      </div>
+      <div class="next-strip" id="nextStrip" style="display:none">
+        <span class="pulse" id="nextLed"></span>
+        <div class="txt">
+          <div class="lab">Próximo pago</div>
+          <div class="val" id="nextVal">—</div>
+        </div>
+        <div class="amt mono" id="nextAmt"></div>
+      </div>
+    </section>
+
+    <section class="month" id="monthSec" style="display:none">
+      <div class="month-head">
+        <h2>El mes</h2>
+        <span class="mname" id="monthName"></span>
+      </div>
+      <div class="track-box">
+        <div class="track" id="track">
+          <div class="today-tag" id="todayTag">hoy</div>
+          <div class="today-line" id="todayLine"></div>
+        </div>
+        <div class="month-empty" id="monthEmpty" style="display:none">Sin pagos cargados este mes</div>
+      </div>
+    </section>
+
+    <div class="sec-head">
+      <h2>Tarjetas</h2>
+      <span class="count" id="cardCount"></span>
+    </div>
+    <div class="cards" id="cards"></div>
+    <div class="empty" id="empty" style="display:none">
+      <div class="ic">◈</div>
+      <h3>Sin tarjetas todavía</h3>
+      <p>Agrega tu primera tarjeta para empezar a llevar el control de cortes y pagos.</p>
+    </div>
+  </div>
+
+  <div class="fab-wrap">
+    <button class="fab" id="addBtn"><span class="plus">+</span> Agregar tarjeta</button>
+  </div>
+
+  <!-- modal -->
+  <div class="scrim" id="scrim">
+    <div class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+      <div class="grip"></div>
+      <h2 id="sheetTitle">Nueva tarjeta</h2>
+      <p class="hint">Solo lo necesario para no perder de vista cortes y pagos.</p>
+
+      <div class="field">
+        <label for="fName">Banco / Nombre</label>
+        <input class="input" id="fName" type="text" placeholder="Ej. BBVA Oro, Nu, Banamex" maxlength="28" autocomplete="off">
+        <div class="err" id="errName">Ponle un nombre a la tarjeta.</div>
+      </div>
+
+      <div class="field">
+        <label for="fLast4">Últimos 4 dígitos <span style="text-transform:none;letter-spacing:0;color:var(--text-faint)">(opcional)</span></label>
+        <input class="input mono" id="fLast4" type="text" inputmode="numeric" placeholder="1234" maxlength="4" autocomplete="off">
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="fLimit">Límite de crédito</label>
+          <div class="with-pre"><span class="pre">$</span><input class="input mono" id="fLimit" type="text" inputmode="decimal" placeholder="50,000"></div>
+          <div class="err" id="errLimit">Pon un límite válido.</div>
+        </div>
+        <div class="field">
+          <label for="fBalance">Saldo actual</label>
+          <div class="with-pre"><span class="pre">$</span><input class="input mono" id="fBalance" type="text" inputmode="decimal" placeholder="0"></div>
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="fCut">Día de corte</label>
+          <input class="input mono" id="fCut" type="text" inputmode="numeric" placeholder="1–31" maxlength="2">
+          <div class="err" id="errCut">Día 1 a 31.</div>
+        </div>
+        <div class="field">
+          <label for="fDue">Día límite de pago</label>
+          <input class="input mono" id="fDue" type="text" inputmode="numeric" placeholder="1–31" maxlength="2">
+          <div class="err" id="errDue">Día 1 a 31.</div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="fMin">Pago mínimo <span style="text-transform:none;letter-spacing:0;color:var(--text-faint)">(opcional)</span></label>
+        <div class="with-pre"><span class="pre">$</span><input class="input mono" id="fMin" type="text" inputmode="decimal" placeholder="0"></div>
+      </div>
+
+      <div class="field">
+        <label>Color</label>
+        <div class="swatches" id="swatches"></div>
+      </div>
+
+      <button class="paid-toggle" id="paidToggle" style="display:none"></button>
+
+      <div class="sheet-actions">
+        <button class="btn" id="cancelBtn">Cancelar</button>
+        <button class="btn primary" id="saveBtn">Guardar</button>
+      </div>
+
+      <div class="danger-row" id="dangerRow" style="display:none">
+        <button class="link-del" id="delBtn">Eliminar tarjeta</button>
+        <div class="confirm-del" id="confirmDel">
+          <span>¿Eliminar de verdad?</span>
+          <button class="mini no" id="delNo">Cancelar</button>
+          <button class="mini yes" id="delYes">Eliminar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"><span class="led"></span><span id="toastMsg">Guardado</span></div>
+
+<script>
+(function(){
+  "use strict";
+
+  const KEY = "mosbyfx-cards";
+  const PALETTE = ["#820AD1","#1464A5","#E6007E","#FF7733","#FFD400","#2FCB82","#33C7C7","#8A8F86"];
+  const MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+  // Tus tarjetas precargadas (nombre + color de marca). Tú metes los números.
+  const SEED = [
+    {name:"Nu",          color:"#820AD1"},
+    {name:"BBVA",        color:"#1464A5"},
+    {name:"Plata Card",  color:"#E6007E"},
+    {name:"DiDi Card",   color:"#FF7733"},
+    {name:"BanCoppel",   color:"#FFD400"}
+  ];
+  function newCard(o){ return Object.assign({id:"c"+Date.now()+Math.random().toString(36).slice(2,6),name:"",last4:"",limit:0,balance:0,cutDay:0,dueDay:0,minPayment:0,color:PALETTE[0],paidCycle:null}, o); }
+  function isComplete(c){ return (c.limit>0) && (c.cutDay>=1&&c.cutDay<=31) && (c.dueDay>=1&&c.dueDay<=31); }
+  function monogram(name){ return ((name||"?").trim().charAt(0)||"?").toUpperCase(); }
+  function contrastText(hex){
+    try{ const h=hex.replace('#',''); const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+      return (0.299*r+0.587*g+0.114*b) > 150 ? "#0A0B0A" : "#ffffff"; }catch(e){ return "#fff"; }
+  }
+
+  let cards = [];
+  let editingId = null;
+  let chosenColor = PALETTE[0];
+
+  const mxn = new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN',maximumFractionDigits:0});
+  const fmt = n => mxn.format(Math.round(n||0));
+
+  // ---------- storage (localStorage: guarda en el propio dispositivo) ----------
+  function load(){
+    try{
+      const raw = localStorage.getItem(KEY);
+      if(raw){ const d = JSON.parse(raw); return Array.isArray(d)?d:[]; }
+    }catch(e){ /* nada guardado todavía o sin acceso */ }
+    return [];
+  }
+  function persist(){
+    try{ localStorage.setItem(KEY, JSON.stringify(cards)); }
+    catch(e){ console.error("save failed", e); }
+  }
+
+  // ---------- date logic ----------
+  function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
+  function clampDay(y,m,d){ return Math.min(d, daysInMonth(y,m)); }
+  function startOfToday(){ const n=new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
+
+  // returns {due:Date, days:int(neg=overdue), paid:bool, cycleKey}
+  function activeDue(card){
+    const t = startOfToday();
+    const y = t.getFullYear(), m = t.getMonth();
+    const thisDue = new Date(y, m, clampDay(y,m,card.dueDay));
+    const thisKey = y+"-"+m;
+    let cycleKey, due;
+    if(t.getTime() <= thisDue.getTime()){
+      cycleKey = thisKey; due = thisDue;
+    } else {
+      // this month's due already passed
+      if(card.paidCycle === thisKey){
+        const nm = m===11?0:m+1, ny = m===11?y+1:y;
+        due = new Date(ny, nm, clampDay(ny,nm,card.dueDay));
+        cycleKey = ny+"-"+nm;
+      } else {
+        cycleKey = thisKey; due = thisDue; // overdue
+      }
+    }
+    const paid = card.paidCycle === cycleKey;
+    const days = Math.round((due.getTime() - t.getTime())/86400000);
+    return {due, days, paid, cycleKey};
+  }
+
+  function payState(card){
+    const a = activeDue(card);
+    if(a.paid) return {cls:"paid", label:"Pagado", led:"paid", a};
+    if(a.days < 0) return {cls:"hot", label:"Vencido hace "+Math.abs(a.days)+(Math.abs(a.days)===1?" día":" días"), led:"hot", a};
+    if(a.days === 0) return {cls:"hot", label:"Paga hoy", led:"hot", a};
+    if(a.days === 1) return {cls:"hot", label:"Paga mañana", led:"hot", a};
+    if(a.days <= 7) return {cls:"soon", label:"Paga en "+a.days+" días", led:"soon", a};
+    return {cls:"ok", label:"Paga en "+a.days+" días", led:"ok", a};
+  }
+
+  function utilClass(u){ if(u>=0.7) return "hot"; if(u>=0.3) return "soon"; return "ok"; }
+  function ordinal(d){ return "día "+d; }
+
+  // ---------- render ----------
+  function render(){
+    const cont = document.getElementById('cards');
+    const empty = document.getElementById('empty');
+    const done = cards.filter(isComplete);
+    const totalBal = done.reduce((s,c)=>s+(c.balance||0),0);
+    const totalLim = done.reduce((s,c)=>s+(c.limit||0),0);
+    const u = totalLim>0 ? totalBal/totalLim : 0;
+
+    document.getElementById('totalNum').textContent = new Intl.NumberFormat('es-MX',{maximumFractionDigits:0}).format(Math.round(totalBal));
+    document.getElementById('utilPct').textContent = Math.round(u*100)+"%";
+    document.getElementById('availNum').textContent = fmt(Math.max(totalLim-totalBal,0));
+    const gm = document.getElementById('globalMeter');
+    gm.className = "meter " + (u>=0.7?"u-hot":u>=0.3?"u-soon":"");
+    gm.querySelector('i').style.width = Math.min(u*100,100)+"%";
+
+    document.getElementById('cardCount').textContent = cards.length ? cards.length+(cards.length===1?" tarjeta":" tarjetas") : "";
+
+    // next payment (soonest unpaid)
+    const pend = cards.filter(isComplete).map(c=>({c, p:payState(c)})).filter(x=>!x.p.a.paid)
+                      .sort((a,b)=>a.p.a.days-b.p.a.days);
+    const strip = document.getElementById('nextStrip');
+    if(pend.length){
+      const top = pend[0];
+      strip.style.display = "flex";
+      document.getElementById('nextLed').style.cssText = ledStyle(top.p.led);
+      document.getElementById('nextVal').textContent = top.c.name + " · " + top.p.label;
+      document.getElementById('nextAmt').textContent = fmt(top.c.balance);
+    } else { strip.style.display = "none"; }
+
+    // month timeline
+    renderMonth();
+
+    // cards (sorted: overdue/soonest first, paid last)
+    cont.innerHTML = "";
+    if(!cards.length){ empty.style.display = "block"; return; }
+    empty.style.display = "none";
+
+    const sorted = cards.map(c=>({c,p:payState(c),done:isComplete(c)})).sort((a,b)=>{
+      const ka = a.done ? (a.p.a.paid? 20000 : a.p.a.days) : 10000;
+      const kb = b.done ? (b.p.a.paid? 20000 : b.p.a.days) : 10000;
+      return ka - kb;
+    });
+
+    sorted.forEach((x,i)=>{
+      const c = x.c, p = x.p, done = x.done;
+      const accent = c.color||PALETTE[0];
+      const el = document.createElement('div');
+      el.style.setProperty('--accent', accent);
+      el.style.animationDelay = (i*0.05)+"s";
+      el.setAttribute('role','button');
+      el.setAttribute('tabindex','0');
+      const mono = '<div class="c-mono" style="background:'+accent+';color:'+contrastText(accent)+'">'+esc(monogram(c.name))+'</div>';
+
+      if(!done){
+        el.className = "card incomplete";
+        el.innerHTML =
+          '<div class="c-top">'
+            +'<div class="c-id">'+mono+'<div><div class="c-name">'+esc(c.name||"Nueva tarjeta")+'</div>'
+            +'<div class="c-todo">Toca para completar tus datos</div></div></div>'
+            +'<div class="c-arrow">+</div>'
+          +'</div>';
+      } else {
+        const lim = c.limit||0, bal = c.balance||0;
+        const uu = lim>0 ? bal/lim : 0;
+        const uc = utilClass(uu);
+        el.className = "card" + (p.a.paid?" is-paid":"");
+        el.innerHTML =
+          '<div class="c-top">'
+            +'<div class="c-id">'+mono+'<div><div class="c-name">'+esc(c.name)+'</div>'
+            + (c.last4 ? '<div class="c-digits mono">•••• '+esc(c.last4)+'</div>' : '')
+            +'</div></div>'
+            +'<div class="c-bal"><div class="n mono">'+fmt(bal)+'</div><div class="l">Saldo</div></div>'
+          +'</div>'
+          +'<div class="c-meter"><i style="width:'+Math.min(uu*100,100)+'%;background:var(--'+colorVar(uc)+')"></i></div>'
+          +'<div class="c-util"><span>'+Math.round(uu*100)+'% usado</span><span class="mono">'+fmt(Math.max(lim-bal,0))+' libre</span></div>'
+          +'<div class="c-foot">'
+            +'<span class="chip"><span class="k">Corte</span> '+ordinal(c.cutDay)+'</span>'
+            +'<span class="chip pay-chip '+p.cls+'"><span class="led '+p.led+'"></span>'+p.label+'</span>'
+          +'</div>';
+      }
+      el.addEventListener('click', ()=>openModal(c.id));
+      el.addEventListener('keydown', e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); openModal(c.id);} });
+      cont.appendChild(el);
+    });
+  }
+
+  function colorVar(cls){ return cls==="hot"?"red":cls==="soon"?"gold":"green"; }
+  function ledStyle(cls){
+    const c = cls==="hot"?"--red":cls==="soon"?"--gold":"--green";
+    const g = cls==="hot"?"--red-glow":cls==="soon"?"--gold-glow":"--green-glow";
+    return "background:var("+c+");box-shadow:0 0 9px var("+g+");width:9px;height:9px;border-radius:50%;flex:none;";
+  }
+
+  function renderMonth(){
+    const sec = document.getElementById('monthSec');
+    if(!cards.length){ sec.style.display="none"; return; }
+    sec.style.display="block";
+    const t = startOfToday();
+    const y=t.getFullYear(), m=t.getMonth(), dim=daysInMonth(y,m);
+    document.getElementById('monthName').textContent = MONTHS[m]+" "+y;
+    const pct = d => ((d-1)/(dim-1))*100;
+
+    const track = document.getElementById('track');
+    // clear old ticks
+    track.querySelectorAll('.tick').forEach(n=>n.remove());
+
+    document.getElementById('todayLine').style.left = pct(t.getDate())+"%";
+    document.getElementById('todayTag').style.left = pct(t.getDate())+"%";
+
+    let count=0;
+    cards.forEach((c,idx)=>{
+      if(!isComplete(c)) return;
+      const p = payState(c);
+      // only show ticks whose due falls within current month view
+      const due = p.a.due;
+      if(due.getFullYear()===y && due.getMonth()===m){
+        const tk = document.createElement('div');
+        tk.className = "tick "+(p.a.paid?"paid":p.led) + (idx%2? " alt":"");
+        tk.style.left = pct(due.getDate())+"%";
+        tk.title = c.name+" · "+p.label;
+        track.appendChild(tk);
+        count++;
+      }
+    });
+    document.getElementById('monthEmpty').style.display = count? "none":"block";
+  }
+
+  function esc(s){ return String(s).replace(/[&<>"]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m])); }
+
+  // ---------- modal ----------
+  const scrim = document.getElementById('scrim');
+  function buildSwatches(){
+    const box = document.getElementById('swatches'); box.innerHTML="";
+    PALETTE.forEach(col=>{
+      const s = document.createElement('button');
+      s.className = "sw"+(col===chosenColor?" on":"");
+      s.style.background = col; s.style.color = col;
+      s.setAttribute('aria-label','color '+col);
+      s.addEventListener('click', ()=>{ chosenColor=col; buildSwatches(); });
+      box.appendChild(s);
+    });
+  }
+
+  function openModal(id){
+    editingId = id || null;
+    clearErrors();
+    document.getElementById('confirmDel').classList.remove('show');
+    document.getElementById('delBtn').style.display = "";
+    const card = id ? cards.find(c=>c.id===id) : null;
+    chosenColor = card ? (card.color||PALETTE[0]) : PALETTE[0];
+    buildSwatches();
+
+    document.getElementById('sheetTitle').textContent = card ? "Editar tarjeta" : "Nueva tarjeta";
+    setVal('fName', card?card.name:"");
+    setVal('fLast4', card&&card.last4?card.last4:"");
+    setVal('fLimit', card?numStr(card.limit):"");
+    setVal('fBalance', card?numStr(card.balance):"");
+    setVal('fCut', card?card.cutDay:"");
+    setVal('fDue', card?card.dueDay:"");
+    setVal('fMin', card&&card.minPayment?numStr(card.minPayment):"");
+
+    const pt = document.getElementById('paidToggle');
+    const dr = document.getElementById('dangerRow');
+    if(card){
+      dr.style.display = "flex";
+      const p = payState(card);
+      pt.style.display = "block";
+      if(p.a.paid){
+        pt.className = "paid-toggle undo";
+        pt.textContent = "✓ Pagado este ciclo — deshacer";
+      } else {
+        pt.className = "paid-toggle";
+        pt.textContent = "Marcar como pagado este ciclo";
+      }
+    } else {
+      dr.style.display = "none";
+      pt.style.display = "none";
+    }
+
+    scrim.classList.add('open');
+    document.body.style.overflow = "hidden";
+    setTimeout(()=>document.getElementById('fName').focus(), 320);
+  }
+  function closeModal(){
+    scrim.classList.remove('open');
+    document.body.style.overflow = "";
+    editingId = null;
+  }
+  function setVal(id,v){ document.getElementById(id).value = (v===undefined||v===null)?"":v; }
+  function numStr(n){ return (n||n===0)? String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",") : ""; }
+  function parseNum(v){ const n = parseFloat(String(v).replace(/[^0-9.]/g,"")); return isNaN(n)?0:n; }
+
+  function clearErrors(){ document.querySelectorAll('.err').forEach(e=>e.classList.remove('show')); }
+  function showErr(id){ document.getElementById(id).classList.add('show'); }
+
+  function save(){
+    clearErrors();
+    const name = document.getElementById('fName').value.trim();
+    const last4 = document.getElementById('fLast4').value.replace(/\D/g,"").slice(0,4);
+    const limit = parseNum(document.getElementById('fLimit').value);
+    const balance = parseNum(document.getElementById('fBalance').value);
+    const cutDay = parseInt(document.getElementById('fCut').value,10);
+    const dueDay = parseInt(document.getElementById('fDue').value,10);
+    const minPayment = parseNum(document.getElementById('fMin').value);
+
+    let ok = true;
+    if(!name){ showErr('errName'); ok=false; }
+    if(!(limit>0)){ showErr('errLimit'); ok=false; }
+    if(!(cutDay>=1 && cutDay<=31)){ showErr('errCut'); ok=false; }
+    if(!(dueDay>=1 && dueDay<=31)){ showErr('errDue'); ok=false; }
+    if(!ok) return;
+
+    if(editingId){
+      const c = cards.find(x=>x.id===editingId);
+      Object.assign(c, {name,last4,limit,balance,cutDay,dueDay,minPayment,color:chosenColor});
+    } else {
+      cards.push({
+        id: "c"+Date.now()+Math.random().toString(36).slice(2,6),
+        name,last4,limit,balance,cutDay,dueDay,minPayment,color:chosenColor,paidCycle:null
+      });
+    }
+    persist();
+    render();
+    closeModal();
+    toast(editingId?"Tarjeta actualizada":"Tarjeta agregada");
+  }
+
+  function togglePaid(){
+    if(!editingId) return;
+    const c = cards.find(x=>x.id===editingId);
+    const a = activeDue(c);
+    if(a.paid){ c.paidCycle = null; }
+    else { c.paidCycle = a.cycleKey; }
+    persist(); render();
+    // refresh modal button state
+    openModal(editingId);
+    toast(a.paid?"Marcado como no pagado":"¡Pago registrado!");
+  }
+
+  function del(){
+    if(!editingId) return;
+    cards = cards.filter(c=>c.id!==editingId);
+    persist(); render(); closeModal();
+    toast("Tarjeta eliminada");
+  }
+
+  let toastT;
+  function toast(msg){
+    const t = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastT);
+    toastT = setTimeout(()=>t.classList.remove('show'), 1900);
+  }
+
+  // ---------- clock ----------
+  function tickClock(){
+    const d = new Date();
+    const days = ["dom","lun","mar","mié","jue","vie","sáb"];
+    document.getElementById('clock').textContent =
+      days[d.getDay()]+" "+d.getDate()+" "+MONTHS[d.getMonth()];
+  }
+
+  // ---------- wire ----------
+  document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
+  document.getElementById('cancelBtn').addEventListener('click', closeModal);
+  document.getElementById('saveBtn').addEventListener('click', save);
+  document.getElementById('paidToggle').addEventListener('click', togglePaid);
+  document.getElementById('delBtn').addEventListener('click', ()=>{
+    document.getElementById('confirmDel').classList.add('show');
+    document.getElementById('delBtn').style.display="none";
+  });
+  document.getElementById('delNo').addEventListener('click', ()=>{
+    document.getElementById('confirmDel').classList.remove('show');
+    document.getElementById('delBtn').style.display="";
+  });
+  document.getElementById('delYes').addEventListener('click', del);
+  scrim.addEventListener('click', e=>{ if(e.target===scrim) closeModal(); });
+  document.addEventListener('keydown', e=>{ if(e.key==='Escape' && scrim.classList.contains('open')) closeModal(); });
+
+  // ---------- boot ----------
+  tickClock();
+  setInterval(tickClock, 60000);
+  if(localStorage.getItem(KEY) === null){
+    cards = SEED.map(s=>newCard(s));   // primera vez: precargo tus 5 tarjetas
+    persist();
+  } else {
+    cards = load();
+  }
+  render();
+})();
+</script>
+</body>
+</html>
