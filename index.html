@@ -127,7 +127,8 @@
   .c-bal .n{font-size:21px;font-weight:600;letter-spacing:-.01em;}
   .c-bal .l{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-faint);margin-top:1px;}
   .c-id{display:flex;align-items:center;gap:12px;min-width:0;}
-  .c-mono{width:40px;height:40px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;box-shadow:0 4px 14px -6px rgba(0,0,0,.7);}
+  .c-mono{position:relative;overflow:hidden;width:40px;height:40px;border-radius:11px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:17px;box-shadow:0 4px 14px -6px rgba(0,0,0,.7);}
+  .c-mono-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
   .c-todo{font-size:11.5px;color:var(--gold);margin-top:3px;}
   .c-arrow{font-size:24px;color:var(--text-faint);font-weight:300;flex:none;align-self:center;line-height:1;}
   .card.incomplete{border-style:dashed;border-color:var(--line);background:rgba(255,255,255,0.012);}
@@ -191,6 +192,9 @@
   .input:focus{outline:none;border-color:var(--gold);background:#1d231b;}
   .row2{display:flex;gap:12px;}
   .row2 .field{flex:1;}
+  select.input{appearance:none;-webkit-appearance:none;cursor:pointer;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M1 1l5 5 5-5' stroke='%238A8F86' stroke-width='1.6' fill='none' stroke-linecap='round'/></svg>");
+    background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
   .with-pre{position:relative;}
   .with-pre .pre{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:var(--text-faint);font-family:'JetBrains Mono',monospace;font-size:15px;pointer-events:none;}
   .with-pre .input{padding-left:30px;}
@@ -331,14 +335,14 @@
 
       <div class="row2">
         <div class="field">
-          <label for="fCut">Día de corte</label>
-          <input class="input mono" id="fCut" type="text" inputmode="numeric" placeholder="1–31" maxlength="2">
-          <div class="err" id="errCut">Día 1 a 31.</div>
+          <label for="fCut">Día de corte <span style="text-transform:none;letter-spacing:0;color:var(--text-faint)">(cada mes)</span></label>
+          <select class="input mono" id="fCut"></select>
+          <div class="err" id="errCut">Elige un día.</div>
         </div>
         <div class="field">
-          <label for="fDue">Día límite de pago</label>
-          <input class="input mono" id="fDue" type="text" inputmode="numeric" placeholder="1–31" maxlength="2">
-          <div class="err" id="errDue">Día 1 a 31.</div>
+          <label for="fDue">Día de pago <span style="text-transform:none;letter-spacing:0;color:var(--text-faint)">(cada mes)</span></label>
+          <select class="input mono" id="fDue"></select>
+          <div class="err" id="errDue">Elige un día.</div>
         </div>
       </div>
 
@@ -379,15 +383,34 @@
   const KEY = "mosbyfx-cards";
   const PALETTE = ["#820AD1","#1464A5","#E6007E","#FF7733","#FFD400","#2FCB82","#33C7C7","#8A8F86"];
   const MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
-  // Tus tarjetas precargadas (nombre + color de marca). Tú metes los números.
-  const SEED = [
-    {name:"Nu",          color:"#820AD1"},
-    {name:"BBVA",        color:"#1464A5"},
-    {name:"Plata Card",  color:"#E6007E"},
-    {name:"DiDi Card",   color:"#FF7733"},
-    {name:"BanCoppel",   color:"#FFD400"}
-  ];
-  function newCard(o){ return Object.assign({id:"c"+Date.now()+Math.random().toString(36).slice(2,6),name:"",last4:"",limit:0,balance:0,cutDay:0,dueDay:0,minPayment:0,color:PALETTE[0],paidCycle:null}, o); }
+  // Marca: color + dominio (para el logo oficial via favicon). Solo tu equipo lo ve.
+  const BRAND = {
+    "nu":{c:"#820AD1",d:"nu.com.mx"},
+    "bbva":{c:"#1464A5",d:"bbva.mx"},
+    "plata card":{c:"#E6007E",d:"platacard.mx"},
+    "plata":{c:"#E6007E",d:"platacard.mx"},
+    "didi card":{c:"#FF7733",d:"didiglobal.com"},
+    "didi":{c:"#FF7733",d:"didiglobal.com"},
+    "bancoppel":{c:"#FFD400",d:"bancoppel.com"},
+    "banamex":{c:"#0B5CAB",d:"banamex.com"},
+    "citibanamex":{c:"#0B5CAB",d:"banamex.com"},
+    "santander":{c:"#EC0000",d:"santander.com.mx"},
+    "banorte":{c:"#C8102E",d:"banorte.com"},
+    "hsbc":{c:"#DB0011",d:"hsbc.com.mx"},
+    "mercado pago":{c:"#009EE3",d:"mercadopago.com.mx"},
+    "stori":{c:"#E94E3C",d:"storicard.com"},
+    "klar":{c:"#E6007E",d:"klar.mx"},
+    "hey banco":{c:"#00C389",d:"heybanco.com"},
+    "hey":{c:"#00C389",d:"heybanco.com"},
+    "rappi":{c:"#FF441F",d:"rappi.com.mx"}
+  };
+  function brandFor(name){ return BRAND[(name||"").trim().toLowerCase()] || null; }
+  function logoUrl(domain){ return domain ? "https://www.google.com/s2/favicons?domain="+encodeURIComponent(domain)+"&sz=128" : ""; }
+  // Tus tarjetas precargadas. Tú metes los números.
+  const SEED = ["Nu","BBVA","Plata Card","DiDi Card","BanCoppel"].map(n=>{
+    const b = brandFor(n); return {name:n, color:b?b.c:PALETTE[0], domain:b?b.d:""};
+  });
+  function newCard(o){ return Object.assign({id:"c"+Date.now()+Math.random().toString(36).slice(2,6),name:"",last4:"",limit:0,balance:0,cutDay:0,dueDay:0,minPayment:0,color:PALETTE[0],domain:"",paidCycle:null}, o); }
   function isComplete(c){ return (c.limit>0) && (c.cutDay>=1&&c.cutDay<=31) && (c.dueDay>=1&&c.dueDay<=31); }
   function monogram(name){ return ((name||"?").trim().charAt(0)||"?").toUpperCase(); }
   function contrastText(hex){
@@ -504,12 +527,16 @@
     sorted.forEach((x,i)=>{
       const c = x.c, p = x.p, done = x.done;
       const accent = c.color||PALETTE[0];
+      const lg = logoUrl(c.domain);
       const el = document.createElement('div');
       el.style.setProperty('--accent', accent);
       el.style.animationDelay = (i*0.05)+"s";
       el.setAttribute('role','button');
       el.setAttribute('tabindex','0');
-      const mono = '<div class="c-mono" style="background:'+accent+';color:'+contrastText(accent)+'">'+esc(monogram(c.name))+'</div>';
+      const mono = '<div class="c-mono" style="background:'+accent+';color:'+contrastText(accent)+'">'
+        + '<span>'+esc(monogram(c.name))+'</span>'
+        + (lg ? '<img class="c-mono-img" src="'+lg+'" alt="" referrerpolicy="no-referrer" onerror="this.style.display=\'none\'">' : '')
+        + '</div>';
 
       if(!done){
         el.className = "card incomplete";
@@ -615,8 +642,8 @@
     setVal('fLast4', card&&card.last4?card.last4:"");
     setVal('fLimit', card?numStr(card.limit):"");
     setVal('fBalance', card?numStr(card.balance):"");
-    setVal('fCut', card?card.cutDay:"");
-    setVal('fDue', card?card.dueDay:"");
+    setVal('fCut', card&&card.cutDay?card.cutDay:"");
+    setVal('fDue', card&&card.dueDay?card.dueDay:"");
     setVal('fMin', card&&card.minPayment?numStr(card.minPayment):"");
 
     const pt = document.getElementById('paidToggle');
@@ -673,11 +700,10 @@
     if(editingId){
       const c = cards.find(x=>x.id===editingId);
       Object.assign(c, {name,last4,limit,balance,cutDay,dueDay,minPayment,color:chosenColor});
+      const b = brandFor(name); if(b && !c.domain) c.domain = b.d;
     } else {
-      cards.push({
-        id: "c"+Date.now()+Math.random().toString(36).slice(2,6),
-        name,last4,limit,balance,cutDay,dueDay,minPayment,color:chosenColor,paidCycle:null
-      });
+      const b = brandFor(name);
+      cards.push(newCard({name,last4,limit,balance,cutDay,dueDay,minPayment,color:chosenColor,domain:b?b.d:""}));
     }
     persist();
     render();
@@ -739,6 +765,15 @@
   document.addEventListener('keydown', e=>{ if(e.key==='Escape' && scrim.classList.contains('open')) closeModal(); });
 
   // ---------- boot ----------
+  function fillDays(){
+    ["fCut","fDue"].forEach(id=>{
+      const sel = document.getElementById(id);
+      let html = '<option value="">Elige…</option>';
+      for(let d=1; d<=31; d++) html += '<option value="'+d+'">'+d+'</option>';
+      sel.innerHTML = html;
+    });
+  }
+  fillDays();
   tickClock();
   setInterval(tickClock, 60000);
   if(localStorage.getItem(KEY) === null){
@@ -746,6 +781,10 @@
     persist();
   } else {
     cards = load();
+    // Backfill: que tus tarjetas ya guardadas agarren su logo de marca
+    let changed = false;
+    cards.forEach(c=>{ const b = brandFor(c.name); if(b && !c.domain){ c.domain = b.d; changed = true; } });
+    if(changed) persist();
   }
   render();
 })();
