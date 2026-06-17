@@ -393,9 +393,9 @@
     "bbva":{c:"#1464A5",d:"bbva.mx",g:20},
     "plata card":{c:"#E6007E",d:"platacard.mx",g:30},
     "plata":{c:"#E6007E",d:"platacard.mx",g:30},
-    "didi card":{c:"#FF7733",d:"didiglobal.com",g:16},
-    "didi":{c:"#FF7733",d:"didiglobal.com",g:16},
-    "bancoppel":{c:"#FFD400",d:"bancoppel.com",g:26},
+    "didi card":{c:"#FF7733",d:"didiglobal.com",g:15},
+    "didi":{c:"#FF7733",d:"didiglobal.com",g:15},
+    "bancoppel":{c:"#FFD400",d:"bancoppel.com",g:27},
     "banamex":{c:"#0B5CAB",d:"banamex.com",g:20},
     "citibanamex":{c:"#0B5CAB",d:"banamex.com",g:20},
     "santander":{c:"#EC0000",d:"santander.com.mx",g:20},
@@ -460,29 +460,39 @@
   function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
   function clampDay(y,m,d){ return Math.min(d, daysInMonth(y,m)); }
   function startOfToday(){ const n=new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate()); }
-
-  // returns {due:Date, days:int(neg=overdue), paid:bool, cycleKey}
+  function cutDate(y,m,day){ return new Date(y,m,clampDay(y,m,day)); }
+  // El pago siempre se calcula a partir del corte: primer día de pago DESPUÉS del corte
+  function payAfterCorte(corte, pagoDay){
+    let y=corte.getFullYear(), m=corte.getMonth();
+    let p=new Date(y,m,clampDay(y,m,pagoDay));
+    if(p.getTime() <= corte.getTime()){ m++; if(m>11){m=0;y++;} p=new Date(y,m,clampDay(y,m,pagoDay)); }
+    return p;
+  }
+  function lastCorteDate(corteDay, from){
+    const y=from.getFullYear(), m=from.getMonth();
+    const cThis=cutDate(y,m,corteDay);
+    if(from.getTime()>=cThis.getTime()) return cThis;
+    const pm=m===0?11:m-1, py=m===0?y-1:y;
+    return cutDate(py,pm,corteDay);
+  }
+  function nextCorteAfter(corte, corteDay){
+    let y=corte.getFullYear(), m=corte.getMonth()+1; if(m>11){m=0;y++;}
+    return cutDate(y,m,corteDay);
+  }
+  // returns {due:Date, corte:Date, days:int(neg=overdue), paid:bool, cycleKey}
   function activeDue(card){
     const t = startOfToday();
-    const y = t.getFullYear(), m = t.getMonth();
-    const thisDue = new Date(y, m, clampDay(y,m,card.dueDay));
-    const thisKey = y+"-"+m;
-    let cycleKey, due;
-    if(t.getTime() <= thisDue.getTime()){
-      cycleKey = thisKey; due = thisDue;
-    } else {
-      // this month's due already passed
-      if(card.paidCycle === thisKey){
-        const nm = m===11?0:m+1, ny = m===11?y+1:y;
-        due = new Date(ny, nm, clampDay(ny,nm,card.dueDay));
-        cycleKey = ny+"-"+nm;
-      } else {
-        cycleKey = thisKey; due = thisDue; // overdue
-      }
+    let corte = lastCorteDate(card.cutDay, t);
+    let due = payAfterCorte(corte, card.dueDay);
+    let cycleKey = corte.getFullYear()+"-"+corte.getMonth();
+    if(card.paidCycle === cycleKey){
+      corte = nextCorteAfter(corte, card.cutDay);
+      due = payAfterCorte(corte, card.dueDay);
+      cycleKey = corte.getFullYear()+"-"+corte.getMonth();
     }
     const paid = card.paidCycle === cycleKey;
     const days = Math.round((due.getTime() - t.getTime())/86400000);
-    return {due, days, paid, cycleKey};
+    return {due, corte, days, paid, cycleKey};
   }
 
   function payState(card){
@@ -579,7 +589,7 @@
           +'<div class="c-meter"><i style="width:'+Math.min(uu*100,100)+'%;background:var(--'+colorVar(uc)+')"></i></div>'
           +'<div class="c-util"><span>'+Math.round(uu*100)+'% usado</span><span class="mono">'+fmt(Math.max(lim-bal,0))+' libre</span></div>'
           +'<div class="c-foot">'
-            +'<span class="chip"><span class="k">Corte</span> '+fmtDate(nextDayDate(c.cutDay))+'</span>'
+            +'<span class="chip"><span class="k">Corte</span> '+fmtDate(p.a.corte)+'</span>'
             +'<span class="chip pay-chip '+p.cls+'"><span class="led '+p.led+'"></span>'+fmtDate(p.a.due)+' · '+shortStatus(p)+'</span>'
           +'</div>';
       }
@@ -688,14 +698,18 @@
     setTimeout(()=>document.getElementById('fName').focus(), 320);
   }
   // Sugiere la fecha de pago según el banco al elegir el día de corte
+  function suggestPagoDay(corteDay, grace){
+    if(grace >= 28) return corteDay;            // ciclo mensual (Plata): mismo día, mes siguiente
+    const ref = new Date(2025,0,corteDay); ref.setDate(ref.getDate()+grace);
+    return ref.getDate();
+  }
   function suggestDue(){
     const name = document.getElementById('fName').value.trim();
     const b = brandFor(name);
     const cd = parseInt(document.getElementById('fCut').value,10);
     const dueSel = document.getElementById('fDue');
     if(b && cd>=1 && !dueSel.value){
-      const ref = new Date(2025,0,cd); ref.setDate(ref.getDate()+b.g);
-      dueSel.value = String(ref.getDate());
+      dueSel.value = String(suggestPagoDay(cd, b.g));
     }
     updatePreview();
   }
@@ -704,8 +718,9 @@
     const dd = parseInt(document.getElementById('fDue').value,10);
     const el = document.getElementById('payPreview');
     if(cd>=1 && dd>=1){
-      const corte = nextDayDate(cd), pago = nextDayDate(dd);
-      el.innerHTML = 'Pago <b>'+fmtDate(pago)+'</b> &nbsp;·&nbsp; Corte <b>'+fmtDate(corte)+'</b>';
+      const corte = nextDayDate(cd);
+      const pago = payAfterCorte(corte, dd);     // el pago real del ciclo que cierra en ese corte
+      el.innerHTML = 'Corte <b>'+fmtDate(corte)+'</b> &nbsp;→&nbsp; Pago <b>'+fmtDate(pago)+'</b>';
       el.style.display = "block";
     } else { el.style.display = "none"; }
   }
