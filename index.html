@@ -206,6 +206,8 @@
 
   .err{font-size:11.5px;color:var(--red);margin-top:4px;display:none;}
   .err.show{display:block;}
+  .pay-preview{margin:-4px 0 15px;padding:11px 13px;border:1px solid rgba(212,178,94,.22);border-radius:11px;background:rgba(212,178,94,.06);font-size:12.5px;color:var(--text-dim);font-family:'JetBrains Mono',monospace;letter-spacing:.01em;}
+  .pay-preview b{color:var(--gold);font-weight:600;}
 
   .sheet-actions{display:flex;gap:11px;margin-top:22px;}
   .btn{flex:1;height:50px;border-radius:13px;font-family:inherit;font-size:14px;font-weight:600;letter-spacing:.03em;cursor:pointer;border:1px solid var(--line-soft);background:var(--panel-2);color:var(--text);transition:filter .2s,transform .12s;}
@@ -346,6 +348,8 @@
         </div>
       </div>
 
+      <div id="payPreview" class="pay-preview" style="display:none"></div>
+
       <div class="field">
         <label for="fMin">Pago mínimo <span style="text-transform:none;letter-spacing:0;color:var(--text-faint)">(opcional)</span></label>
         <div class="with-pre"><span class="pre">$</span><input class="input mono" id="fMin" type="text" inputmode="decimal" placeholder="0"></div>
@@ -385,24 +389,24 @@
   const MONTHS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
   // Marca: color + dominio (para el logo oficial via favicon). Solo tu equipo lo ve.
   const BRAND = {
-    "nu":{c:"#820AD1",d:"nu.com.mx"},
-    "bbva":{c:"#1464A5",d:"bbva.mx"},
-    "plata card":{c:"#E6007E",d:"platacard.mx"},
-    "plata":{c:"#E6007E",d:"platacard.mx"},
-    "didi card":{c:"#FF7733",d:"didiglobal.com"},
-    "didi":{c:"#FF7733",d:"didiglobal.com"},
-    "bancoppel":{c:"#FFD400",d:"bancoppel.com"},
-    "banamex":{c:"#0B5CAB",d:"banamex.com"},
-    "citibanamex":{c:"#0B5CAB",d:"banamex.com"},
-    "santander":{c:"#EC0000",d:"santander.com.mx"},
-    "banorte":{c:"#C8102E",d:"banorte.com"},
-    "hsbc":{c:"#DB0011",d:"hsbc.com.mx"},
-    "mercado pago":{c:"#009EE3",d:"mercadopago.com.mx"},
-    "stori":{c:"#E94E3C",d:"storicard.com"},
-    "klar":{c:"#E6007E",d:"klar.mx"},
-    "hey banco":{c:"#00C389",d:"heybanco.com"},
-    "hey":{c:"#00C389",d:"heybanco.com"},
-    "rappi":{c:"#FF441F",d:"rappi.com.mx"}
+    "nu":{c:"#820AD1",d:"nu.com.mx",g:10},
+    "bbva":{c:"#1464A5",d:"bbva.mx",g:20},
+    "plata card":{c:"#E6007E",d:"platacard.mx",g:30},
+    "plata":{c:"#E6007E",d:"platacard.mx",g:30},
+    "didi card":{c:"#FF7733",d:"didiglobal.com",g:16},
+    "didi":{c:"#FF7733",d:"didiglobal.com",g:16},
+    "bancoppel":{c:"#FFD400",d:"bancoppel.com",g:26},
+    "banamex":{c:"#0B5CAB",d:"banamex.com",g:20},
+    "citibanamex":{c:"#0B5CAB",d:"banamex.com",g:20},
+    "santander":{c:"#EC0000",d:"santander.com.mx",g:20},
+    "banorte":{c:"#C8102E",d:"banorte.com",g:20},
+    "hsbc":{c:"#DB0011",d:"hsbc.com.mx",g:20},
+    "mercado pago":{c:"#009EE3",d:"mercadopago.com.mx",g:13},
+    "stori":{c:"#E94E3C",d:"storicard.com",g:20},
+    "klar":{c:"#E6007E",d:"klar.mx",g:20},
+    "hey banco":{c:"#00C389",d:"heybanco.com",g:20},
+    "hey":{c:"#00C389",d:"heybanco.com",g:20},
+    "rappi":{c:"#FF441F",d:"rappi.com.mx",g:20}
   };
   function brandFor(name){ return BRAND[(name||"").trim().toLowerCase()] || null; }
   function logoUrl(domain){ return domain ? "https://www.google.com/s2/favicons?domain="+encodeURIComponent(domain)+"&sz=128" : ""; }
@@ -416,6 +420,20 @@
   function contrastText(hex){
     try{ const h=hex.replace('#',''); const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
       return (0.299*r+0.587*g+0.114*b) > 150 ? "#0A0B0A" : "#ffffff"; }catch(e){ return "#fff"; }
+  }
+  function fmtDate(d){ return d.getDate()+" "+MONTHS[d.getMonth()]; }
+  function nextDayDate(day){
+    const t=startOfToday(), y=t.getFullYear(), m=t.getMonth();
+    let d=new Date(y,m,Math.min(day,daysInMonth(y,m)));
+    if(d.getTime()<t.getTime()){ const nm=m===11?0:m+1, ny=m===11?y+1:y; d=new Date(ny,nm,Math.min(day,daysInMonth(ny,nm))); }
+    return d;
+  }
+  function shortStatus(p){
+    if(p.a.paid) return "pagado";
+    if(p.a.days<0) return "vencido";
+    if(p.a.days===0) return "hoy";
+    if(p.a.days===1) return "mañana";
+    return "en "+p.a.days+" días";
   }
 
   let cards = [];
@@ -506,7 +524,7 @@
       const top = pend[0];
       strip.style.display = "flex";
       document.getElementById('nextLed').style.cssText = ledStyle(top.p.led);
-      document.getElementById('nextVal').textContent = top.c.name + " · " + top.p.label;
+      document.getElementById('nextVal').textContent = top.c.name + " · paga " + fmtDate(top.p.a.due) + " (" + shortStatus(top.p) + ")";
       document.getElementById('nextAmt').textContent = fmt(top.c.balance);
     } else { strip.style.display = "none"; }
 
@@ -561,8 +579,8 @@
           +'<div class="c-meter"><i style="width:'+Math.min(uu*100,100)+'%;background:var(--'+colorVar(uc)+')"></i></div>'
           +'<div class="c-util"><span>'+Math.round(uu*100)+'% usado</span><span class="mono">'+fmt(Math.max(lim-bal,0))+' libre</span></div>'
           +'<div class="c-foot">'
-            +'<span class="chip"><span class="k">Corte</span> '+ordinal(c.cutDay)+'</span>'
-            +'<span class="chip pay-chip '+p.cls+'"><span class="led '+p.led+'"></span>'+p.label+'</span>'
+            +'<span class="chip"><span class="k">Corte</span> '+fmtDate(nextDayDate(c.cutDay))+'</span>'
+            +'<span class="chip pay-chip '+p.cls+'"><span class="led '+p.led+'"></span>'+fmtDate(p.a.due)+' · '+shortStatus(p)+'</span>'
           +'</div>';
       }
       el.addEventListener('click', ()=>openModal(c.id));
@@ -666,7 +684,30 @@
 
     scrim.classList.add('open');
     document.body.style.overflow = "hidden";
+    updatePreview();
     setTimeout(()=>document.getElementById('fName').focus(), 320);
+  }
+  // Sugiere la fecha de pago según el banco al elegir el día de corte
+  function suggestDue(){
+    const name = document.getElementById('fName').value.trim();
+    const b = brandFor(name);
+    const cd = parseInt(document.getElementById('fCut').value,10);
+    const dueSel = document.getElementById('fDue');
+    if(b && cd>=1 && !dueSel.value){
+      const ref = new Date(2025,0,cd); ref.setDate(ref.getDate()+b.g);
+      dueSel.value = String(ref.getDate());
+    }
+    updatePreview();
+  }
+  function updatePreview(){
+    const cd = parseInt(document.getElementById('fCut').value,10);
+    const dd = parseInt(document.getElementById('fDue').value,10);
+    const el = document.getElementById('payPreview');
+    if(cd>=1 && dd>=1){
+      const corte = nextDayDate(cd), pago = nextDayDate(dd);
+      el.innerHTML = 'Pago <b>'+fmtDate(pago)+'</b> &nbsp;·&nbsp; Corte <b>'+fmtDate(corte)+'</b>';
+      el.style.display = "block";
+    } else { el.style.display = "none"; }
   }
   function closeModal(){
     scrim.classList.remove('open');
@@ -749,6 +790,8 @@
 
   // ---------- wire ----------
   document.getElementById('addBtn').addEventListener('click', ()=>openModal(null));
+  document.getElementById('fCut').addEventListener('change', suggestDue);
+  document.getElementById('fDue').addEventListener('change', updatePreview);
   document.getElementById('cancelBtn').addEventListener('click', closeModal);
   document.getElementById('saveBtn').addEventListener('click', save);
   document.getElementById('paidToggle').addEventListener('click', togglePaid);
